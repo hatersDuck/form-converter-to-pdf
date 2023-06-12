@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="1169px" height="827px" viewBox="-0.5 -0.5 1169 827">
+	<rect id="img-1" x="0" y="175.5" width="750" height="473" fill="#FFF" stroke="#000" pointer-events="all"/>
+	<rect id="static-logo_1.png" x="930" y="25" width="215" height="120" fill="#FFF" stroke="#000" pointer-events="all"/>
+	<rect id="rect-1" x="50" y="50" width="870" height="50" fill="transparent" stroke="none" pointer-events="all"/>
+	<rect id="rect-2" x="765" y="177" width="404" height="470" fill="#4e45a4" stroke="#ff3333" pointer-events="all"/>
+	<text id="row-1-title" x="52" y="97" fill="#5045a5" font-family="Helvetica" font-size="48px" font-weight="bold"></text>
+	<text id="text-1-description" x="790" y="217" fill="#FFFFFF" font-family="Helvetica" font-size="20px"></text>
+	<rect id="static-logo_2.png" x="20" y="674.88" width="244.48" height="125.12" fill="#FFF" stroke="#000" pointer-events="all"/>
+	<rect id="skip-skip" x="265" y="755" width="904" height="25" fill="#4e45a4" stroke="none" pointer-events="all"/>
+	<text id="skip-skip" x="275" y="773" fill="#FFFFFF" font-family="Helvetica" font-size="19px" font-weight="bold">rmgr.ru</text>
+</svg>	
