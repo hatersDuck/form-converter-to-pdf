@@ -48,10 +48,6 @@ export default {
         info: {
             type: Object,
         },
-        imgUrls: {
-            type: Array,
-            default: []
-        },
         dataSVG: {
             type: String
         }

@@ -1,6 +1,6 @@
 <template>
 <div>
-    <slot></slot> {{ num+1 }} image
+    <p style="margin-bottom: 10px; margin-top: 0px;">Add {{ name }} image </p>
     <label :for="fileInputId" 
       :class="{'button': true, 'success': fileUploaded}" 
       :style="{'color': fileUploaded ? 'white' : 'initial', 'background-color': fileUploaded ? 'rgba(10, 60, 30, 0.5)' : ''}">
@@ -19,6 +19,7 @@ export default {
         index: Number,
         id: String,
         num: Number,
+        name: String,
     },
     data() {
         return {

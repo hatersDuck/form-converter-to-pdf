@@ -1,5 +1,3 @@
-<!--Пофиксить кнопки, они не обновляют dataSVG-->
-
 <template>
 <div class="app">
     <div class="sections-container">
@@ -17,8 +15,8 @@
                         <hr>
                     </div>
 
-                    <div v-for="(d, index) in proper['img']['count']" :key="index">
-                        <MyInputPhoto @file-selected="onFileSelected" :index="i" :id="'my-input-file-' + i + '-'+ index" :num = "index" class="text">Add</MyInputPhoto>
+                    <div v-for="(name, index) in proper['img']['names']" :key="index">
+                        <MyInputPhoto @file-selected="onFileSelected" :name="name" :index="i" :id="'my-input-file-' + i + '-'+ index" :num = "index" class="text"/>
                     </div>
 
                     <div v-for="(d, index) in proper['row']['count']" :key="index" class="text">
@@ -30,7 +28,7 @@
                     </div>
                 </div>
             </div>
-            <button id="submit" type="file" class="button botButt" @click="onSubmitClick">
+            <button v-if="selectedTemplate"  id="submit" type="file" class="button botButt" @click="onSubmitClick">
                 Export to pdf
             </button>
             <button v-if="selectedTemplate" id="preview" type="submit" class="button eyeButt" @click="onPreviewClick">
@@ -43,7 +41,6 @@
         v-model:path="actualPath"
         :count="uniqueTemplates[selectedTemplate]['countList']"
         :info="uniqueTemplates[selectedTemplate]"
-        :imgUrls="imageUrls"
         :dataSVG="dataSVG"
         @pageChange="updateSVG"
         />
@@ -51,17 +48,14 @@
 </div>
 </template>
 
-<script>
+<script charset="utf-8" type="text/javascript">
 import MyInputPhoto from "@/components/UI/MyInputPhoto";
 import MyEditableTitle from "@/components/UI/MyEditableTitle";
 import MyEditableDescription from "@/components/UI/MyEditableDescription";
 import MyPreview from "@/components/UI/MyPreview";
 
-import {
-    parse as SVGParse
-} from 'svg-parser';
-import jsPDF from "jspdf";
-import 'svg2pdf.js'
+import axios from 'axios';
+import "svg2pdf.js"
 
 export default {
     components: {
@@ -72,8 +66,6 @@ export default {
     },
     data() {
         return {
-            imageUrls: [],
-
             uniqueTemplates: {},
             selectedTemplate: undefined,
 
@@ -94,7 +86,7 @@ export default {
                     const reader = new FileReader();
                     reader.readAsDataURL(file);
                     reader.onload = () => {
-                        this.imageUrls[i][index] = reader.result;
+                        this.uniqueTemplates[this.selectedTemplate]['forms'][i]['img']['link'][index] = reader.result;
                     };
                 }
             } catch (error) {
@@ -105,194 +97,58 @@ export default {
             this.showPreview = true;
             this.updateSVG(this.actualPath)
         },
-        onSelectTemplate() {
-            this.actualPath = 'templates/' + this.selectedTemplate + '-1.svg';
-
-            for (let i = 1; i <= this.uniqueTemplates[this.selectedTemplate]["countList"]; i++) {
-                const templatePath = 'templates/' + this.selectedTemplate + '-' + i + ".svg";
-                
-                this.uniqueTemplates[this.selectedTemplate]["forms"] = []
-                fetch(templatePath)
-                    .then(response => response.text())
-                    .then(svg => {
-                        const svgObj = SVGParse(svg);
-                        const index = i-1
-
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index] = {}
-
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index]["img"] = {}
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index]["img"]["count"] = 0
-
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index]["row"] = {}
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index]["row"]["count"] = 0
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index]["row"]["names"] = []
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index]["row"]["link"] = []
-
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index]["text"] = {}
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index]["text"]["count"] = 0
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index]["text"]["names"] = []
-                        this.uniqueTemplates[this.selectedTemplate]["forms"][index]["text"]["link"] = []
-
-                        for (const children of svgObj.children[0].children) {
-                            const id_arr = children.properties["id"].split("-")
-                            const type_ = id_arr[0]
-
-                            switch (type_) {
-                                case 'img':
-                                    this.uniqueTemplates[this.selectedTemplate]["forms"][index][type_]["count"]++;
-                                    break
-                                case 'row': case 'text':
-                                    this.uniqueTemplates[this.selectedTemplate]["forms"][index][type_]["count"]++;
-                                    this.uniqueTemplates[this.selectedTemplate]["forms"][index][type_]["names"].push(id_arr[2])
-                                    this.uniqueTemplates[this.selectedTemplate]["forms"][index][type_]["link"].push("")
-                                    break
-                            }
-                        }
-                        this.imageUrls[index] = new Array(this.uniqueTemplates[this.selectedTemplate]["forms"][index]["img"]["count"]).fill(null);
-                    })
-                    .catch(error => console.error(error));
-            }
-            
-        },
-        setUniqueTemplates() {
+        async onSelectTemplate() {
             const templatesFolder = "templates";
+            this.actualPath = templatesFolder + "/" + this.selectedTemplate + "-1.svg"
+            const request = {
+                    uniqueTemplates: this.uniqueTemplates,
+                    selectedTemplate: this.selectedTemplate,
+                }
+            const response = await axios.post('http://127.0.0.1:8081/uniqueTemplates/' + templatesFolder, request);
+            this.uniqueTemplates = response.data['uniqueTemplates']
 
-            fetch(templatesFolder)
-                .then((response) => response.text())
-                .then((html) => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, "text/html");
-                    const files = Array.from(doc.querySelectorAll("a"))
-                        .map((link) => link.getAttribute("href"))
-                        .filter((file) => file !== "/" && file !== templatesFolder)
-                        .map((file) => file.substring(file.lastIndexOf("/") + 1))
-                        .map((file) => file.split("-")[0]);
-
-                    const uniqueFiles = [...new Set(files)];
-
-                    for (let i = 0; i < uniqueFiles.length; i++) {
-                        let key = uniqueFiles[i];
-                        let value = 0;
-
-                        for (let j = 0; j < files.length; j++) {
-                            if (files[j] === key) {
-                                value++;
-                            }
-                        }
-
-                        this.uniqueTemplates[key] = {};
-                        this.uniqueTemplates[key]["countList"] = value;
-                    }
-                });
         },
-        updateSVG(_path) {
-            console.log(_path);
-            return fetch(_path)
-                .then(response => response.text())
-                .then(svg => {
-                const svgObj = SVGParse(svg);
-                const svgNS = "http://www.w3.org/2000/svg";
-                const parser = new DOMParser();
-                const svgDoc = parser.parseFromString(svg, "image/svg+xml");
-                const serializer = new XMLSerializer();
-                const svgElement = svgDoc.documentElement;
-                const index = parseInt(_path[_path.length-5]) - 1
-                console.log(index)
-                console.log("SVGOBJ: " + _path)
-                console.log(svgObj)
+        async setUniqueTemplates() {
+            const templatesFolder = "templates";
+            const response = await axios.get('http://127.0.0.1:8081/uniqueFilenames/' + templatesFolder);
+            for (let key in response.data){
+                this.uniqueTemplates[key] = {}
+                this.uniqueTemplates[key]["countList"] = response.data[key];
+            }
 
-                for (const children of svgObj.children[0].children) {
-                    const row = children.properties
-                    const id_arr = row["id"].split("-")
-                    const type_ = id_arr[0]
-
-                    const element = svgElement.querySelector(`[id^="${row['id']}"]`);
-
-                    switch (type_) {
-                    case 'img':
-                        const num = parseInt(id_arr[1]) - 1
-                        const url = this.imageUrls[index][num]
-                        if(url){
-                        const newImage = document.createElementNS(svgNS, "image");
-
-                        newImage.setAttribute("x", row["x"])
-                        newImage.setAttribute("y", row["y"])
-                        newImage.setAttribute("width", row["width"])
-                        newImage.setAttribute("height", row["height"])
-                        newImage.setAttribute("preserveAspectRatio", "none")
-                        newImage.setAttribute("href", url)
-                        element.setAttribute("width", "0")
-                        element.setAttribute("height", "0")
-
-                        svgElement.appendChild(newImage);
-                        }
-                        break
-                    case 'row':
-                        const numeral = parseInt(id_arr[1]) - 1
-                        element.textContent = this.uniqueTemplates[this.selectedTemplate]["forms"][index]['row']['link'][numeral]
-                        break
-                    case 'text':
-                        const numeric = parseInt(id_arr[1]) - 1
-                        const newTextNode = document.createElementNS(svgNS, "text");
-
-                        const rowsTexts = this.uniqueTemplates[this.selectedTemplate]["forms"][index]['text']['link'][numeric].split('\n');
-                        let dy = "0"
-                        for (const rowText of rowsTexts) {
-                        const newSpan = document.createElementNS(svgNS, "tspan");
-                        newSpan.setAttribute('x', row['x'])
-                        newSpan.setAttribute('dy', dy)
-                        newSpan.textContent = rowText;
-
-                        element.appendChild(newSpan);
-                        dy = row['font-size']
-                        }
-
-                        break
-                    case 'static':
-                        const newImage = document.createElementNS(svgNS, "image");
-
-                        newImage.setAttribute("x", row["x"])
-                        newImage.setAttribute("y", row["y"])
-                        newImage.setAttribute("width", row["width"])
-                        newImage.setAttribute("height", row["height"])
-                        newImage.setAttribute("preserveAspectRatio", "none")
-                        newImage.setAttribute("href", 'static/' + id_arr[1])
-
-                        element.setAttribute("width", "0")
-                        element.setAttribute("height", "0")
-
-                        svgElement.appendChild(newImage);
-                        break
-                    }
-                }
-                this.dataSVG = serializer.serializeToString(svgDoc);
-                this.dataSVGdoc = svgDoc
-                return this.dataSVGdoc
-                })
-                .catch(error => console.error(error));
-            },
-            async onSubmitClick() {
-                const pdf = new jsPDF("l", "pt", "A4", );
-                let promises = [];
-                for (let i = 1; i <= this.uniqueTemplates[this.selectedTemplate]["countList"]; i++) {
-                    const templatePath = 'templates/' + this.selectedTemplate + '-' + i + ".svg";
-                    const promise = this.updateSVG(templatePath);
-                    promises.push(promise);
-                }
-                Promise.all(promises).then(async dataSVGS => {
-                    for (let i = 0; i < dataSVGS.length; i++) {
-                        console.log("NEW DATA; ");
-                        const width = pdf.internal.pageSize.width;
-                        const height = pdf.internal.pageSize.height;
-                        await pdf.svg(dataSVGS[i].documentElement, {"width": width, "height": height});
-                        if (i !== dataSVGS.length - 1) {
-                            pdf.addPage();
-                        }
-                    }
-
-                    pdf.save('ex.pdf');
+        },
+        async updateSVG(_path) {
+            const request = {
+                uniqueTemplates: this.uniqueTemplates,
+                selectedTemplate: this.selectedTemplate,
+            };
+            console.log(_path)
+            try {
+                const response = await axios.post(`http://127.0.0.1:8081/svg/${_path}`, request, {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
                 });
-                }
+
+                this.dataSVG = response.data;
+            } catch (error) {
+                console.error(error);
+            }
+        },      
+        async onSubmitClick() {
+            const templatesFolder = "templates";
+            const request = {
+                uniqueTemplates: this.uniqueTemplates,
+                selectedTemplate: this.selectedTemplate,
+            };
+            const response = await axios.post('http://127.0.0.1:8081/pdf/' + templatesFolder, request, { responseType: 'blob' });
+
+            const fileUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = fileUrl;
+            link.download = 'ex1.pdf'; 
+            link.click();
+            },
     }
 }
 </script>

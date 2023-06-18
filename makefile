@@ -1,7 +1,7 @@
 .PHONY: server client
 
 server:
-	cd server && go run main.go
+	cd server && python3 main.py
 
 client:
 	cd client && npm run serve
