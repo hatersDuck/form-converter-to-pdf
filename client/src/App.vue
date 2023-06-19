@@ -19,12 +19,12 @@
                         <MyInputPhoto @file-selected="onFileSelected" :name="name" :index="i" :id="'my-input-file-' + i + '-'+ index" :num = "index" class="text"/>
                     </div>
 
-                    <div v-for="(d, index) in proper['row']['count']" :key="index" class="text">
-                        <MyEditableTitle v-model="proper['row']['link'][index]" :placeholder = "'Enter ' + proper['row']['names'][index]" />
+                    <div v-for="(name, index) in proper['row']['names']" :key="index" class="text">
+                        <MyEditableTitle v-model="proper['row']['link'][index]" :placeholder = "'Enter ' + name" />
                     </div>
 
-                    <div v-for="(d, index) in proper['text']['count']" :key="index" class="text">
-                        <MyEditableDescription v-model="proper['text']['link'][index]" :placeholder = "'Paste ' + proper['text']['names'][index]" />
+                    <div v-for="(name, index) in proper['text']['names']" :key="index" class="text">
+                        <MyEditableDescription v-model="proper['text']['link'][index]" :placeholder = "'Paste ' + name" />
                     </div>
                 </div>
             </div>
@@ -122,7 +122,6 @@ export default {
                 uniqueTemplates: this.uniqueTemplates,
                 selectedTemplate: this.selectedTemplate,
             };
-            console.log(_path)
             try {
                 const response = await axios.post(`http://127.0.0.1:8081/svg/${_path}`, request, {
                     headers: {
@@ -146,7 +145,7 @@ export default {
             const fileUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
             const link = document.createElement('a');
             link.href = fileUrl;
-            link.download = 'ex1.pdf'; 
+            link.download = this.selectedTemplate + '.pdf'; 
             link.click();
             },
     }

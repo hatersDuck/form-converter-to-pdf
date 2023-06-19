@@ -15,11 +15,12 @@ CORS(app, resources={r"/*": {"origins": "http://localhost:8080"}},
 PATH = "../client/public/"
 
 def get_unique_filenames(folder_name):
+    """ Возвращает название уникальных названий файлов и количество этого названия в папке"""
     filenames = {}
     seen = set()
     folder_path = os.path.join(PATH, folder_name)
 
-    for root, dirs, files in os.walk(folder_path):
+    for _, _, files in os.walk(folder_path):
         for file in files:  
             if not file.endswith(".svg"):
                 continue
@@ -84,8 +85,8 @@ def svg(folder, file):
 
             data_svg = etree.tostring(root)
             return Response(data_svg, mimetype='image/svg+xml')
-        except Exception as e:
-            print(e)
+        except Exception as ex:
+            print(ex)
             return "", 500
 
     return send_file(path, mimetype="image/svg+xml")
@@ -94,16 +95,17 @@ def svg(folder, file):
 def pdf(folder):
     path = os.path.join(PATH, folder)
     post_data = request.get_json()
-    pdf_ = get_pdf(post_data, path)
+    pdf_, file_name = get_pdf(post_data, path) # filename только для того, чтобы не было случайных скачиваний одного и того же файла
 
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         pdf_.save()
-        tmp.write(open('ex1.pdf', 'rb').read())
+        tmp.write(open(file_name, 'rb').read())
+        os.remove(file_name)
 
     response = make_response()
-    response.data = open(tmp.name, 'rb').read()  # устанавливаем содержимое ответа
-    response.headers['Content-Type'] = 'application/pdf'  # устанавливаем тип контента
-    response.headers['Content-Disposition'] = 'attachment; filename=ex1.pdf'  # задаем имя файла и тип скачивания
+    response.data = open(tmp.name, 'rb').read()  # содержимое ответа
+    response.headers['Content-Type'] = 'application/pdf'  # тип контента
+    response.headers['Content-Disposition'] = 'attachment;'  # тип скачивания
     return response
 
 if __name__ == "__main__":
