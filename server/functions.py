@@ -5,6 +5,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.graphics import renderPDF
 from datetime import datetime
+import tempfile
 
 def all_types():
     """ Возвращает список доступных типов для модификации """
@@ -136,8 +137,7 @@ def get_pdf(post_data, folder):
             root.append(e)
         
         svg_data = etree.tostring(root)
-
-        import tempfile
+        
         with tempfile.NamedTemporaryFile(suffix='.svg') as tmp:
             tmp.write(svg_data)
             tmp.flush()
