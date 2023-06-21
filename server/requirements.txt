@@ -1,5 +1,5 @@
 Flask==2.0.1
 Flask-Cors==3.0.10
 lxml==4.6.3
-svglib==1.1.1
+svglib==1.5.1
 reportlab==3.5.68
