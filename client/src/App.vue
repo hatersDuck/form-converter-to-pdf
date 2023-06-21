@@ -104,13 +104,13 @@ export default {
                     uniqueTemplates: this.uniqueTemplates,
                     selectedTemplate: this.selectedTemplate,
                 }
-            const response = await axios.post('http://127.0.0.1:8081/uniqueTemplates/' + templatesFolder, request);
+            const response = await axios.post('http://95.163.233.204:5000/uniqueTemplates/' + templatesFolder, request);
             this.uniqueTemplates = response.data['uniqueTemplates']
 
         },
         async setUniqueTemplates() {
             const templatesFolder = "templates";
-            const response = await axios.get('http://127.0.0.1:8081/uniqueFilenames/' + templatesFolder);
+            const response = await axios.get('http://95.163.233.204:5000/uniqueFilenames/' + templatesFolder);
             for (let key in response.data){
                 this.uniqueTemplates[key] = {}
                 this.uniqueTemplates[key]["countList"] = response.data[key];
@@ -123,7 +123,7 @@ export default {
                 selectedTemplate: this.selectedTemplate,
             };
             try {
-                const response = await axios.post(`http://127.0.0.1:8081/svg/${_path}`, request, {
+                const response = await axios.post(`http://95.163.233.204:5000/svg/${_path}`, request, {
                     headers: {
                         "Content-Type": "application/json",
                     },
@@ -140,7 +140,7 @@ export default {
                 uniqueTemplates: this.uniqueTemplates,
                 selectedTemplate: this.selectedTemplate,
             };
-            const response = await axios.post('http://127.0.0.1:8081/pdf/' + templatesFolder, request, { responseType: 'blob' });
+            const response = await axios.post('http://95.163.233.204:5000/pdf/' + templatesFolder, request, { responseType: 'blob' });
 
             const fileUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
             const link = document.createElement('a');

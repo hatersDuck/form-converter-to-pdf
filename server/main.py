@@ -8,7 +8,7 @@ import tempfile
 
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:8080"}}, 
+CORS(app, resources={r"/*": {"origins": "*"}}, 
      allow_headers=["Content-Type", "Authorization"], 
      methods=["OPTIONS", "HEAD", "GET", "POST", "PUT", "DELETE"])
 
@@ -107,6 +107,3 @@ def pdf(folder):
     response.headers['Content-Type'] = 'application/pdf'  # тип контента
     response.headers['Content-Disposition'] = 'attachment;'  # тип скачивания
     return response
-
-if __name__ == "__main__":
-    app.run(port=8081)
