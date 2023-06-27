@@ -6,6 +6,7 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.graphics import renderPDF
 from datetime import datetime
 import tempfile
+from const import PATH, PATH_STATIC
 
 def all_types():
     """ Возвращает список доступных типов для модификации """
@@ -17,16 +18,18 @@ def check_type(type_):
 
 def check_id(children):
     """ Проверяет наличие атрибута id у переданного дочернего элемента."""
-    return children.attrib.get('id', False)
+    id = children.attrib.get('id', False)
+    if id:
+        if len(id.split('-')) == 1:
+            id = False
+    return id
 
 def check_g(root):
     """ Проверяет существование группы элементов в корне. """
     return root[0].tag[-1] == 'g' # Сделано лишь для того, что некоторые сайты их используют, а человек может забыть
 
-def get_map_template(path) -> dict:
+def get_map_template(root) -> dict:
     """ Возвращает список для отображение form, а так же их связку и их input """
-    with open(path) as card:
-        root = etree.fromstring(card.read())
     rt = {}
     for type_ in all_types():
         rt[type_] = {
@@ -51,7 +54,7 @@ def get_map_template(path) -> dict:
 
     return rt
 
-def update_svg_template(root, post_data, index, path_img = "") -> list:
+def update_svg_template(root, post_data, index, path_img = "", only_static=False) -> list:
     """ Возвращает SVG-элементы шаблона на основе данных, переданных в post_data. """
     # Тут происходит вся магия
     elements = []
@@ -67,11 +70,11 @@ def update_svg_template(root, post_data, index, path_img = "") -> list:
         type_ = id_arr[0] 
         element = root.xpath(f"//*[starts-with(@id, '{row['id']}')]")[0] # берём элемент вообще можно взять другим способом, но мне что первое в голову пришло, то я и оставлю, так ещё и выглядит грозно ))
         
-        if check_type(type_):
+        if check_type(type_) and not(only_static):
             form = post_data["uniqueTemplates"][post_data["selectedTemplate"]]["forms"][index] # просто сокрашение записи
             num = int(id_arr[1]) - 1 # type-num-name - Вообще можно придумать систему где num будет не нужен, но что-то в падлу
         else:
-            if type_ == "static":   # Единственный тип как, бы модифицированный, но он просто берёт путь
+            if type_ == "static":   # Единственный тип как бы модифицированный, но он просто берёт путь
                 static_path = os.path.join(path_img, 'static', id_arr[1]) # Путь до картинки
                 new_image = etree.Element("image", 
                                             x=row["x"], y=row["y"], width=row["width"], 
@@ -83,33 +86,34 @@ def update_svg_template(root, post_data, index, path_img = "") -> list:
                 elements.append(new_image)
             else:
                 continue
-         
-        if type_ == "img":
-            url = form['img']['link'][num]
-            if url:
-                new_image = etree.Element("image", 
-                                            x=row["x"], y=row["y"], width=row["width"], 
-                                            height=row["height"], preserveAspectRatio="none", href=url)
-                # Обнуляем длину-ширину, чтобы небыло рамки от фигуры
-                element.set("width", "0")
-                element.set("height", "0")
 
-                elements.append(new_image)
+        if not(only_static):
+            if type_ == "img":
+                url = form['img']['link'][num]
+                if url:
+                    new_image = etree.Element("image", 
+                                                x=row["x"], y=row["y"], width=row["width"], 
+                                                height=row["height"], preserveAspectRatio="none", href=url)
+                    # Обнуляем длину-ширину, чтобы небыло рамки от фигуры
+                    element.set("width", "0")
+                    element.set("height", "0")
 
-        elif type_ == "row":
-            text = form['row']['link'][num]
-            element.text = text
+                    elements.append(new_image)
 
-        elif type_ == "text":
-            rows_texts = form['text']['link'][num].split('\n')
-            
-            dy = "0" # Изначальный y обычно делают отступом сверху в самом редакторе поэтому зануляем
-            for row_text in rows_texts:
-                new_span = etree.Element("tspan", x=row['x'], dy=dy) 
-                new_span.text = row_text if row_text else "\t" # тернарка добавлена ведь svg не хочет применять пустую строку
-                
-                element.append(new_span)
-                dy = row['font-size'] # делаем отступ в размер шрифта можно прибавить для красоты какую нибудь константу
+            elif type_ == "row":
+                text = form['row']['link'][num]
+                element.text = text
+
+            elif type_ == "text":
+                rows_texts = form['text']['link'][num].split('\n')
+                element
+                dy = "0" # Изначальный y обычно делают отступом сверху в самом редакторе поэтому зануляем
+                for row_text in rows_texts:
+                    new_span = etree.Element("tspan", x=row['x'], dy=dy) 
+                    new_span.text = row_text if row_text else "\t" # тернарка добавлена ведь svg не хочет применять пустую строку
+                    
+                    element.append(new_span)
+                    dy = row['font-size'] # делаем отступ в размер шрифта можно прибавить для красоты какую нибудь константу
 
     return elements
 
@@ -132,8 +136,8 @@ def get_pdf(post_data, folder):
 
         with open(path) as card:
             root = etree.fromstring(card.read())
-        # Обновляем svg и так как мы в папке сервер, то картинки находятся в другом месте
-        for e in update_svg_template(root, post_data, i-1, os.path.join("/".join(path.split("/")[:-2]))): 
+        # Обновляем svg и так как мы в папке сервер, и даём полный путь до статики
+        for e in update_svg_template(root, post_data, i-1, PATH_STATIC): 
             root.append(e)
         
         svg_data = etree.tostring(root)
