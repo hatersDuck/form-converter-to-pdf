@@ -16,7 +16,7 @@ export default {
 }
 </script>
 
-<style scoped>
+<style>
 .editTitle {
     font-size: 20px;
     color: #4d45a4;

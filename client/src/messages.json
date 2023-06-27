@@ -1,0 +1,24 @@
+{
+    "en":{
+        "title": "Converter",
+        "choose": "Choose template",
+        "add": "Add",
+        "image": "image",
+        "select_photo": "Select Photo",
+        "photo_uploaded": "Photo Uploaded",
+        "enter": "Enter",
+        "paste": "Paste",
+        "export": "Export to pdf"
+    },
+    "ch":{
+        "title": "报告生成软件 器",
+        "choose": "选择模板",
+        "add": "添加",
+        "image": "张图片",
+        "select_photo": "选择照片",
+        "photo_uploaded": "上传照片",
+        "enter": "输入",
+        "paste": "粘贴",
+        "export": "导出为 pdf"
+    }
+}

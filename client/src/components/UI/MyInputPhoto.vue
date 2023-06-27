@@ -1,10 +1,10 @@
 <template>
 <div>
-    <p style="margin-bottom: 10px; margin-top: 0px;">Add {{ name }} image </p>
+    <p style="margin-bottom: 10px; margin-top: 0px;">{{ msg['add'] }} {{ name }} {{ msg['image'] }}  </p>
     <label :for="fileInputId" 
       :class="{'button': true, 'success': fileUploaded}" 
       :style="{'color': fileUploaded ? 'white' : 'initial', 'background-color': fileUploaded ? 'rgba(10, 60, 30, 0.5)' : ''}">
-        {{ fileUploaded ? 'Photo Uploaded' : 'Select Photo' }}
+        {{ fileUploaded ? msg['photo_uploaded'] : msg['select_photo'] }}
     </label>
     <input :id="fileInputId" type="file" accept=".png,.jpeg,.jpg,.webp" @change="onFileChange" />
     <br>
@@ -20,6 +20,7 @@ export default {
         id: String,
         num: Number,
         name: String,
+        msg: Object,
     },
     data() {
         return {

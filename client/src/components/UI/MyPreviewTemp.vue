@@ -1,24 +1,23 @@
 <template>
-  <div v-if="show" class="previewWin" @click.stop="hideDialog">
-    <div @click.stop class="content" :style="{transform: 'scale(' + scale + ')'}">
-      <div v-if="dataSVG !== ''" type="image/svg+xml" :innerHTML="dataSVG"></div>
-      <object v-else type="image/svg+xml" :data="path" ></object>
-      <br />
+  <div v-if="showPreview" class="previewWin" @click.stop="hideDialog">
+    <div class="content" :style="{transform: 'scale(' + scale + ')'}">
+        <div type="image/svg+xml" :innerHTML="dataSVG[page-1]" @click.stop></div>
+    <br />
     </div>
     <div @click.stop>
-        <button v-if="page < count" class="chngPage right" @click="changePage(1)">
+        <button v-if="page < dataSVG.length" class="chngPage right" @click="changePage(1)">
             ⇒
         </button>
         <div v-else class="chngPage right" @click="hideDialog">↷</div>
         <button
-            v-if="page <= count && page !== 1"
+            v-if="page <= dataSVG.length && page !== 1"
             class="chngPage left"
             @click="changePage(-1)"
         >
             ⇐
         </button>
         <div
-            v-if="page < count && page === 1"
+            v-if="page < dataSVG.length && page === 1"
             class="chngPage left"
             @click="hideDialog"
         >
@@ -26,30 +25,21 @@
         </div>
     </div>
   </div>
+
 </template>
 
 <script>
 
 export default {
     props: {
-        show: {
+        showPreview: {
             type: Boolean,
             default: false
         },
-        path: {
-            type: String,
-            default: "",
-        },
-        count: {
-            type: Number,
-            default: 1,
-        },
-        info: {
-            type: Object,
-        },
         dataSVG: {
-            type: String,
-        },
+            type: Array,
+            default: []
+        }
     },
     data() {
         return {
@@ -58,14 +48,10 @@ export default {
     },
     methods: {
         hideDialog() {
-            this.$emit("update:show", false);
+            this.$emit("hide", false);
         },
         changePage(page) {  
-            const num = this.path.split("-")[1].split(".")[0];
-            const newPage = parseInt(num) + page;
-            this.$emit("update:path", this.path.replace(/\d/g, newPage));
-            this.$emit("pageChange", this.path.replace(/\d/g, newPage))
-            this.page = newPage;
+            this.page = this.page + page;
         },
     },
     computed: {

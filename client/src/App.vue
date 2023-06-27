@@ -1,14 +1,27 @@
+<!-- 
+    Отправку на почту
+    Везде Arial
+    Смену языка
+-->
+
 <template>
 <div class="app">
     <div class="sections-container">
         <div class="select-input">
-            <h1>Converter</h1>
+            <h1>{{ msg['title'] }}</h1>
             <hr>
-            <h2 style="font-size: 26px;">Choose template</h2>
+            <select v-model="selectedLanguage" style="background-color: #333; font-size: 16px; color: white;" @change="fetchLanguage">
+                <option value="en">English 🇬🇧</option>
+                <option value="ch">中国 🇨🇳</option>
+            </select>
+            <h2 style="font-size: 26px;">{{ msg['choose'] }}</h2>
             <select v-model="selectedTemplate" @change="onSelectTemplate">
                 <option v-for="(value, key) in uniqueTemplates" :key="key">{{key}}</option>
+                <option v-if="isAdmin" disabled value=""></option>
+                <option v-if="isAdmin" value="add_template" style="background-color: grey; color:white;">Add Template</option>
+                <option v-if="isAdmin" value="add_image" style="background-color: grey; color:white;">Add Images</option>
             </select>
-            <div v-if="selectedTemplate">
+            <div v-if="selectedTemplate && selectedTemplate != 'add_template' && selectedTemplate != 'add_image'">
                 <div v-for="(proper, i) in uniqueTemplates[selectedTemplate]['forms']">
                     <div v-if = "uniqueTemplates[selectedTemplate]['countList']> 1">
                         <h3 style="font-size: 24px;"> {{ i+1 }} list</h3>
@@ -16,34 +29,38 @@
                     </div>
 
                     <div v-for="(name, index) in proper['img']['names']" :key="index">
-                        <MyInputPhoto @file-selected="onFileSelected" :name="name" :index="i" :id="'my-input-file-' + i + '-'+ index" :num = "index" class="text"/>
+                        <MyInputPhoto @file-selected="onFileSelected" :msg="msg" :name="name" :index="i" :id="'my-input-file-' + i + '-'+ index" :num = "index" class="text"/>
                     </div>
 
                     <div v-for="(name, index) in proper['row']['names']" :key="index" class="text">
-                        <MyEditableTitle v-model="proper['row']['link'][index]" :placeholder = "'Enter ' + name" />
+                        <MyEditableTitle v-model="proper['row']['link'][index]" :placeholder = "msg['enter'] + ' ' + name" />
                     </div>
 
                     <div v-for="(name, index) in proper['text']['names']" :key="index" class="text">
-                        <MyEditableDescription v-model="proper['text']['link'][index]" :placeholder = "'Paste ' + name" />
+                        <MyEditableDescription v-model="proper['text']['link'][index]" :placeholder = "msg['paste'] + ' ' + name" />
                     </div>
                 </div>
+                <button id="submit" type="file" class="button botButt" @click="onSubmitClick">
+                    {{msg['export']}}
+                </button>
+                <button id="preview" type="submit" class="button eyeButt" @click="onPreviewClick">
+                    <i class="far fa-eye"  title="Preview"></i>
+                </button>
+                <MyPreview v-model:show="showPreview" 
+                    v-model:path="actualPath"
+                    :count="uniqueTemplates[selectedTemplate]['countList']"
+                    :info="uniqueTemplates[selectedTemplate]"
+                    :dataSVG="dataSVG"
+                    @pageChange="updateSVG"
+                    />
             </div>
-            <button v-if="selectedTemplate"  id="submit" type="file" class="button botButt" @click="onSubmitClick">
-                Export to pdf
-            </button>
-            <button v-if="selectedTemplate" id="preview" type="submit" class="button eyeButt" @click="onPreviewClick">
-                <i class="far fa-eye"  title="Preview"></i>
-            </button>
+            <div v-if="selectedTemplate == 'add_template'">
+                <MyAdmin :template="true"/>
+            </div>
+            <div v-if="selectedTemplate == 'add_image'">
+                <MyAdmin/>
+            </div>
         </div>
-    </div>
-    <div v-if="selectedTemplate">
-    <MyPreview v-model:show="showPreview" 
-        v-model:path="actualPath"
-        :count="uniqueTemplates[selectedTemplate]['countList']"
-        :info="uniqueTemplates[selectedTemplate]"
-        :dataSVG="dataSVG"
-        @pageChange="updateSVG"
-        />
     </div>
 </div>
 </template>
@@ -53,19 +70,23 @@ import MyInputPhoto from "@/components/UI/MyInputPhoto";
 import MyEditableTitle from "@/components/UI/MyEditableTitle";
 import MyEditableDescription from "@/components/UI/MyEditableDescription";
 import MyPreview from "@/components/UI/MyPreview";
+import MyAdmin from "@/components/UI/MyAdmin";
 
 import axios from 'axios';
-import "svg2pdf.js"
+import messages from "@/messages.json"
 
 export default {
     components: {
         MyInputPhoto,
         MyEditableTitle,
         MyEditableDescription,
-        MyPreview
+        MyPreview,
+        MyAdmin,
     },
     data() {
         return {
+            selectedLanguage: "en",
+            msg: {},
             uniqueTemplates: {},
             selectedTemplate: undefined,
 
@@ -73,12 +94,28 @@ export default {
             actualPath: "",
             dataSVG: "",
             dataSVGdoc: {},
+            
+            files: [],
         };
     },
+    created() {
+        this.fetchLanguage();
+    },
     mounted() {
-        this.setUniqueTemplates();
+        this.setUniqueTemplates();  
+    },
+    computed: {
+        isAdmin() {
+            const params = new URLSearchParams(window.location.search)
+            return params.get('admin') === '1'
+    }
     },
     methods: {
+        fetchLanguage() {
+            this.msg = messages;
+            this.msg = this.msg[this.selectedLanguage]
+        },
+
         onFileSelected(files, i, index) {
             try {
                 const file = files[0];
@@ -98,15 +135,11 @@ export default {
             this.updateSVG(this.actualPath)
         },
         async onSelectTemplate() {
-            const templatesFolder = "templates";
-            this.actualPath = templatesFolder + "/" + this.selectedTemplate + "-1.svg"
-            const request = {
-                    uniqueTemplates: this.uniqueTemplates,
-                    selectedTemplate: this.selectedTemplate,
-                }
-            const response = await axios.post('http://95.163.233.204:5000/uniqueTemplates/' + templatesFolder, request);
-            this.uniqueTemplates = response.data['uniqueTemplates']
-
+            if (this.selectedTemplate !== "add_template" && this.selectedTemplate !== "add_image") {
+                const templatesFolder = "templates";
+                this.actualPath = templatesFolder + "/" + this.selectedTemplate + "-1.svg"
+                this.updateSVG(this.actualPath)
+            }
         },
         async setUniqueTemplates() {
             const templatesFolder = "templates";
@@ -114,6 +147,12 @@ export default {
             for (let key in response.data){
                 this.uniqueTemplates[key] = {}
                 this.uniqueTemplates[key]["countList"] = response.data[key];
+                const request = {
+                        uniqueTemplates: this.uniqueTemplates,
+                        selectedTemplate: key,
+                    }
+                const response_templates = await axios.post('http://95.163.233.204:5000/uniqueTemplates/' + templatesFolder, request);
+                this.uniqueTemplates = response_templates.data['uniqueTemplates']
             }
 
         },
@@ -140,14 +179,34 @@ export default {
                 uniqueTemplates: this.uniqueTemplates,
                 selectedTemplate: this.selectedTemplate,
             };
-            const response = await axios.post('http://95.163.233.204:5000/pdf/' + templatesFolder, request, { responseType: 'blob' });
 
-            const fileUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-            const link = document.createElement('a');
-            link.href = fileUrl;
-            link.download = this.selectedTemplate + '.pdf'; 
-            link.click();
-            },
+            const loadingElement = document.createElement('div');
+            loadingElement.classList.add('loading');
+            const progressBar = document.createElement('div');
+            progressBar.classList.add('progress-bar');
+            loadingElement.appendChild(progressBar);
+            document.body.appendChild(loadingElement);
+
+            try {
+                const response = await axios.post('http://95.163.233.204:5000/pdf/' + templatesFolder, request, {
+                responseType: 'blob',
+                onUploadProgress: (progressEvent) => {
+                    console.log(progressEvent.loaded, progressEvent.total)
+                    const progress = (progressEvent.loaded / progressEvent.total) * 100;
+                    progressBar.style.width = `${progress}%`;
+                },
+                });
+                const fileUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+                const link = document.createElement('a');
+                link.href = fileUrl;
+                link.download = this.selectedTemplate + '.pdf'; 
+                link.click();
+            } catch (error) {
+                console.error(error);
+            } finally {
+                document.body.removeChild(loadingElement);
+            }
+        }
     }
 }
 </script>
@@ -254,4 +313,24 @@ select option {
     margin-left: 20px;
     color: white;
     }
+
+    .loading {
+        display: block;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
 </style>
