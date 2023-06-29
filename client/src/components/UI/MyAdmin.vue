@@ -55,14 +55,14 @@
         <MyStaticImagesLib :show="showStatics" @hide_img = "showPreviewStatic"/>
     </div>
     <div v-else>
-        <MyPreviewTemp :showPreview="showPreview" :dataSVG="dataSVG" @hide = "showPreviewTemplate"/>
+        <MyPreview :showPreview="showPreview" :dataSVG="dataSVG" :page="page" @hide="showPreviewTemplate" @changePage="changePage"/>
     </div>
 </template>
 
 <script>
 import MyEditableTitle from './MyEditableTitle.vue';
 import MyStaticImagesLib from './MyStaticImagesLib.vue'
-import MyPreviewTemp from './MyPreviewTemp.vue'
+import MyPreview from './MyPreview.vue'
 import axios from 'axios';
 
 export default {
@@ -75,7 +75,7 @@ export default {
     components: {
         MyEditableTitle,
         MyStaticImagesLib,
-        MyPreviewTemp,
+        MyPreview,
     },
     data() {
         return {
@@ -84,6 +84,7 @@ export default {
             imgs: [],
             imgs_name: [],
             name: "",
+            page: 1,
             success: ["",""],
             showStatics: false,
             showPreview: false,
@@ -96,7 +97,9 @@ export default {
         showPreviewTemplate(hide){
             this.showPreview = hide
         },
-
+        changePage(page){
+            this.page = this.page + page
+        },
         handleFileUpload(event) {
             const fileList = event.target.files;
             for (let i = 0; i < fileList.length; i++) {

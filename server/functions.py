@@ -58,6 +58,7 @@ def update_svg_template(root, post_data, index, path_img = "", only_static=False
     """ Возвращает SVG-элементы шаблона на основе данных, переданных в post_data. """
     # Тут происходит вся магия
     elements = []
+    images_path = []
     for children in root:
         if check_id(children):
             row = children.attrib # Если id есть парсим все атрибуты
@@ -89,8 +90,8 @@ def update_svg_template(root, post_data, index, path_img = "", only_static=False
 
         if not(only_static):
             if type_ == "img":
-                url = form['img']['link'][num]
-                if url:
+                url = os.path.join(path_img, form['img']['link'][num])
+                if url != path_img:
                     new_image = etree.Element("image", 
                                                 x=row["x"], y=row["y"], width=row["width"], 
                                                 height=row["height"], preserveAspectRatio="none", href=url)
@@ -98,6 +99,7 @@ def update_svg_template(root, post_data, index, path_img = "", only_static=False
                     element.set("width", "0")
                     element.set("height", "0")
 
+                    images_path.append(form['img']['link'][num])
                     elements.append(new_image)
 
             elif type_ == "row":
@@ -114,7 +116,10 @@ def update_svg_template(root, post_data, index, path_img = "", only_static=False
                     
                     element.append(new_span)
                     dy = row['font-size'] # делаем отступ в размер шрифта можно прибавить для красоты какую нибудь константу
-
+    
+    if (path_img):
+        return elements, images_path
+    
     return elements
 
 def get_pdf(post_data, folder):
@@ -127,7 +132,7 @@ def get_pdf(post_data, folder):
     x_offset = 0
     y_offset = 0
     width, height = landscape(A4)
-
+    images = []
     for i in  range(1, 
                     post_data["uniqueTemplates"][post_data["selectedTemplate"]]['countList']+1): # проходимся по всем листам
         
@@ -137,9 +142,11 @@ def get_pdf(post_data, folder):
         with open(path) as card:
             root = etree.fromstring(card.read())
         # Обновляем svg и так как мы в папке сервер, и даём полный путь до статики
-        for e in update_svg_template(root, post_data, i-1, PATH_STATIC): 
+        elements, img = update_svg_template(root, post_data, i-1, PATH_STATIC)
+        for e in elements: 
             root.append(e)
         
+        images.append(img)
         svg_data = etree.tostring(root)
         
         with tempfile.NamedTemporaryFile(suffix='.svg') as tmp:
@@ -157,5 +164,10 @@ def get_pdf(post_data, folder):
         if i != post_data["uniqueTemplates"][post_data["selectedTemplate"]]['countList']: 
             pdf.showPage()
 
+    delete_temp(images)
     return pdf, file_name
 
+def delete_temp(images):
+    for paths in images:
+        for path in paths:
+            os.remove(os.path.join(PATH_STATIC, path))

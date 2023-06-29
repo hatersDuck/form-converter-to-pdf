@@ -5,13 +5,41 @@ from lxml import etree
 from functions import get_map_template, update_svg_template, get_pdf
 import tempfile
 from const import PATH, PATH_STATIC, IP
+from PIL import Image
+import io
+from datetime import datetime
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, 
      allow_headers=["Content-Type", "Authorization"], 
      methods=["OPTIONS", "HEAD", "GET", "POST", "PUT", "DELETE"])
 
+@app.route('/compress', methods=['POST'])
+def compress_image():
+    try:
+        file = request.files['image']
 
+        img = Image.open(file)
+        img = img.convert('RGB')  # Convert the image to RGB mode
+        img.save(io.BytesIO(), format='JPEG', optimize=True, quality=70)
+
+        compressed_image = io.BytesIO()
+        img.save(compressed_image, format='JPEG')
+        compressed_image.seek(0)
+
+        filename = f"{int(datetime.now().timestamp()*1000)}.jpeg"
+        path = os.path.join("temp", filename)
+
+        save_path = os.path.join(PATH_STATIC, path)
+
+        with open(save_path, 'wb') as f:
+            f.write(compressed_image.read())
+                    
+        return path
+
+    except Exception as e:
+        return str(e)
 
 def get_unique_filenames(folder_name):
     """ Возвращает название уникальных названий файлов и количество этого названия в папке"""

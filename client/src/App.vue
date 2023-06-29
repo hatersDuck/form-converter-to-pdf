@@ -1,9 +1,3 @@
-<!-- 
-    Отправку на почту
-    Везде Arial
-    Смену языка
--->
-
 <template>
 <div class="app">
     <div class="sections-container">
@@ -43,16 +37,10 @@
                 <button id="submit" type="file" class="button botButt" @click="onSubmitClick">
                     {{msg['export']}}
                 </button>
-                <button id="preview" type="submit" class="button eyeButt" @click="onPreviewClick">
+                <button id="preview" type="submit" class="button eyeButt" @click="onPreviewClick(true)">
                     <i class="far fa-eye"  title="Preview"></i>
                 </button>
-                <MyPreview v-model:show="showPreview" 
-                    v-model:path="actualPath"
-                    :count="uniqueTemplates[selectedTemplate]['countList']"
-                    :info="uniqueTemplates[selectedTemplate]"
-                    :dataSVG="dataSVG"
-                    @pageChange="updateSVG"
-                    />
+                <MyPreview :showPreview="showPreview" :dataSVG="dataSVG" :page="page" @hide="onPreviewClick" @changePage="changePage"/>
             </div>
             <div v-if="selectedTemplate == 'add_template'">
                 <MyAdmin :template="true"/>
@@ -73,6 +61,7 @@ import MyPreview from "@/components/UI/MyPreview";
 import MyAdmin from "@/components/UI/MyAdmin";
 
 import axios from 'axios';
+
 import messages from "@/messages.json"
 
 export default {
@@ -92,9 +81,10 @@ export default {
 
             showPreview: false,
             actualPath: "",
-            dataSVG: "",
+            dataSVG: [],
             dataSVGdoc: {},
             
+            page: 1,
             files: [],
         };
     },
@@ -108,7 +98,7 @@ export default {
         isAdmin() {
             const params = new URLSearchParams(window.location.search)
             return params.get('admin') === '1'
-    }
+        }
     },
     methods: {
         fetchLanguage() {
@@ -117,28 +107,58 @@ export default {
         },
 
         onFileSelected(files, i, index) {
-            try {
-                const file = files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = () => {
-                        this.uniqueTemplates[this.selectedTemplate]['forms'][i]['img']['link'][index] = reader.result;
-                    };
-                }
-            } catch (error) {
-                console.error("Error occurred while processing selected file:", error);
+        try {
+            const file = files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async () => {
+                try {
+                    const formData = new FormData();
+                    formData.append('image', file);
+
+                    const url = 'http://95.163.233.204:5000/compress';
+
+                    const response = await axios.post(url, formData);
+                    const compressedImage = response.data;
+
+                    this.uniqueTemplates[this.selectedTemplate]['forms'][i]['img']['link'][index] = compressedImage;
+                    this.updateSVG(i);
+                } catch (error) {
+                    console.error('Error occurred while processing selected file:', error);
+                    }
+                };
+                reader.readAsDataURL(file);
             }
+        } catch (error) {
+            console.error('Error occurred while processing selected file:', error);
+        }
         },
-        onPreviewClick(){
-            this.showPreview = true;
-            this.updateSVG(this.actualPath)
+
+        onPreviewClick(hide){
+            this.showPreview = hide;
+            if (hide)
+                this.updateSVG(0)
         },
+
+        changePage(page) {
+            this.page = this.page + page;
+            this.updateSVG(this.page-1)
+        },
+        
         async onSelectTemplate() {
             if (this.selectedTemplate !== "add_template" && this.selectedTemplate !== "add_image") {
                 const templatesFolder = "templates";
-                this.actualPath = templatesFolder + "/" + this.selectedTemplate + "-1.svg"
-                this.updateSVG(this.actualPath)
+
+                const request = {
+                        uniqueTemplates: this.uniqueTemplates,
+                        selectedTemplate: this.selectedTemplate,
+                    }
+                const response_templates = await axios.post('http://95.163.233.204:5000/uniqueTemplates/' + templatesFolder, request);
+                this.uniqueTemplates = response_templates.data['uniqueTemplates']
+
+                const countList = this.uniqueTemplates[this.selectedTemplate]['countList']
+                this.dataSVG.length = countList
+                for (let i = 0; i < countList; i++){ this.updateSVG(i) }
             }
         },
         async setUniqueTemplates() {
@@ -156,19 +176,21 @@ export default {
             }
 
         },
-        async updateSVG(_path) {
+        async updateSVG(index) {
+            console.log("update", index)
+            const templatesFolder = "templates";
             const request = {
                 uniqueTemplates: this.uniqueTemplates,
                 selectedTemplate: this.selectedTemplate,
             };
             try {
-                const response = await axios.post(`http://95.163.233.204:5000/svg/${_path}`, request, {
+                const path = `${templatesFolder}/${this.selectedTemplate}-${index+1}.svg`;
+                const response = await axios.post(`http://95.163.233.204:5000/svg/${path}`, request, {
                     headers: {
                         "Content-Type": "application/json",
                     },
                 });
-
-                this.dataSVG = response.data;
+                this.dataSVG[index] = response.data;
             } catch (error) {
                 console.error(error);
             }
@@ -180,31 +202,57 @@ export default {
                 selectedTemplate: this.selectedTemplate,
             };
 
+            const loadingContainer = document.createElement('div');
+            loadingContainer.classList.add('loading-container');
+
+            const loadingOverlay = document.createElement('div');
+            loadingOverlay.classList.add('loading-overlay');
+            loadingOverlay.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                });
+
             const loadingElement = document.createElement('div');
             loadingElement.classList.add('loading');
-            const progressBar = document.createElement('div');
-            progressBar.classList.add('progress-bar');
-            loadingElement.appendChild(progressBar);
-            document.body.appendChild(loadingElement);
+
+            const textElement = document.createElement('p');
+            textElement.classList.add('progress-text');
+
+            loadingContainer.appendChild(loadingElement);
+            loadingContainer.appendChild(textElement);
+
+            document.body.appendChild(loadingOverlay);
+            document.body.appendChild(loadingContainer);
 
             try {
+                const uploadStartTime = Date.now();
                 const response = await axios.post('http://95.163.233.204:5000/pdf/' + templatesFolder, request, {
-                responseType: 'blob',
-                onUploadProgress: (progressEvent) => {
-                    console.log(progressEvent.loaded, progressEvent.total)
-                    const progress = (progressEvent.loaded / progressEvent.total) * 100;
-                    progressBar.style.width = `${progress}%`;
-                },
+                    responseType: 'blob',
+                    onUploadProgress: (progressEvent) => {
+                        const { loaded, total } = progressEvent;
+
+                        const downloaded = loaded / 1024 / 1024;
+                        const remaining = total  / 1024 / 1024;
+                        const elapsedTime = (Date.now() - uploadStartTime) / 1000;
+                        const speed = loaded / elapsedTime / 1024;
+
+                        textElement.textContent = `${downloaded.toFixed(2)}/${remaining.toFixed(2)} Mb| ${speed.toFixed(2)} KB/s`;
+                    },
                 });
+
                 const fileUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
                 const link = document.createElement('a');
                 link.href = fileUrl;
-                link.download = this.selectedTemplate + '.pdf'; 
+                link.download = this.selectedTemplate + '.pdf';
                 link.click();
             } catch (error) {
                 console.error(error);
             } finally {
-                document.body.removeChild(loadingElement);
+                setTimeout(() => {
+                    document.body.removeChild(loadingContainer);
+                    document.body.removeChild(loadingOverlay);
+
+                    this.setUniqueTemplates();
+                }, 500);
             }
         }
     }
@@ -314,23 +362,63 @@ select option {
     color: white;
     }
 
-    .loading {
-        display: block;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        border: 5px solid #f3f3f3;
-        border-top: 5px solid #3498db;
-        animation: spin 1s linear infinite;
-    }
+body {
+    background-color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+.loading-container {
+    position: relative;
+}
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+    pointer-events: auto;
+}
 
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 2;
+}
+
+.loading {
+    width: 50px;
+    height: 50px;
+    border-radius: 100%;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    animation: spin 1s linear infinite;
+}
+
+.progress-text {
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+    display: block;
+    color: greenyellow;
+    font-size: 20px;
+    text-align: center;
+    margin-top: 10px;
+    font-weight: bold;
+    text-shadow: 1px 1px 1px #000;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 </style>
