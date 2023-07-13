@@ -16,6 +16,11 @@
                 <option v-if="isAdmin" value="add_image" style="background-color: grey; color:white;">Add Images</option>
             </select>
             <div v-if="selectedTemplate && selectedTemplate != 'add_template' && selectedTemplate != 'add_image'">
+                <div v-if="isAdmin">
+                    <button id="submit" type="file" style="background-color: red; font-size: 10px;" @click="deleteTemplate">
+                        <div v-if="deletes">YOU SURE?</div><div v-else>DELETE TEMPLATE</div>
+                    </button>
+                </div>
                 <div v-for="(proper, i) in uniqueTemplates[selectedTemplate]['forms']">
                     <div v-if = "uniqueTemplates[selectedTemplate]['countList']> 1">
                         <h3 style="font-size: 24px;"> {{ i+1 }} list</h3>
@@ -34,13 +39,14 @@
                         <MyEditableDescription v-model="proper['text']['link'][index]" :placeholder = "msg['paste'] + ' ' + name" />
                     </div>
                 </div>
+                <hr>
+                <button class="button" @click="onPreviewClick(true)">
+                    {{ msg['preview'] }}
+                </button>
+                <br>
                 <button id="submit" type="file" class="button botButt" @click="onSubmitClick">
                     {{msg['export']}}
                 </button>
-                <button id="preview" type="submit" class="button eyeButt" @click="onPreviewClick(true)">
-                    <i class="far fa-eye"  title="Preview"></i>
-                </button>
-                <MyPreview :showPreview="showPreview" :dataSVG="dataSVG" :page="page" @hide="onPreviewClick" @changePage="changePage"/>
             </div>
             <div v-if="selectedTemplate == 'add_template'">
                 <MyAdmin :template="true"/>
@@ -50,6 +56,7 @@
             </div>
         </div>
     </div>
+    <MyPreview :showPreview="showPreview" :dataSVG="dataSVG" :page="page" @hide="onPreviewClick" @changePage="changePage"/>
 </div>
 </template>
 
@@ -84,7 +91,7 @@ export default {
             dataSVG: [],
             dataSVGdoc: {},
             
-            page: 1,
+            deletes: false,
             files: [],
         };
     },
@@ -134,10 +141,24 @@ export default {
         }
         },
 
+        async deleteTemplate(){
+            if (!this.deletes){
+                this.deletes = true
+            } else {
+                await axios.get('http://95.163.233.204:5000/delete/' + this.selectedTemplate);
+                this.selectedTemplate = ""
+                location.reload();
+            }
+        },
+        
         onPreviewClick(hide){
             this.showPreview = hide;
-            if (hide)
-                this.updateSVG(0)
+            if (hide) {
+                for (let i = 0; i < this.dataSVG.length; i++){
+                    this.updateSVG(i)
+                }
+            }
+                
         },
 
         changePage(page) {
@@ -355,12 +376,6 @@ select option {
     font-weight: normal;
     text-align: center;
 }
-.eyeButt {
-    background-color: #333;
-    border: 0px;
-    margin-left: 20px;
-    color: white;
-    }
 
 body {
     background-color: #333;

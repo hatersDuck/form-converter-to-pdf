@@ -1,12 +1,22 @@
 from lxml import etree
 import os
+
 import svglib.svglib as svglib
+from svglib.svglib import register_font
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.graphics import renderPDF
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
 from datetime import datetime
 import tempfile
-from const import PATH, PATH_STATIC
+from const import PATH, PATH_STATIC, FONT
+from algorithms import text_split, count_letters
+
+# path_font = os.path.join(PATH_STATIC, "fonts", f"{FONT}.ttf")
+# pdfmetrics.registerFont(TTFont(FONT, path_font))
+# print(register_font(FONT, path_font))
 
 def all_types():
     """ Возвращает список доступных типов для модификации """
@@ -53,6 +63,9 @@ def get_map_template(root) -> dict:
             rt[type_]["link"].append("")
 
     return rt
+
+def text_element(root, element):
+    pass
 
 def update_svg_template(root, post_data, index, path_img = "", only_static=False) -> list:
     """ Возвращает SVG-элементы шаблона на основе данных, переданных в post_data. """
@@ -105,14 +118,45 @@ def update_svg_template(root, post_data, index, path_img = "", only_static=False
             elif type_ == "row":
                 text = form['row']['link'][num]
                 element.text = text
+                element.attrib['font-family'] = FONT 
 
             elif type_ == "text":
-                rows_texts = form['text']['link'][num].split('\n')
-                element
+                element.attrib['font-family'] = FONT
+                rows_text = form['text']['link'][num].split('\n')
+                text_x = float(element.get("x", 0))
+                text_y = float(element.get("y", 0))
+                
+                # Поиск ближайшего прямоугольника
+                nearest_rect = None
+                min_distance = float('inf')
+                namespaces = {"svg": "http://www.w3.org/2000/svg"}
+                x = 0
+                for rect in root.xpath("//svg:rect", namespaces=namespaces):
+                    rect_x = float(rect.get("x", 0))
+                    rect_y = float(rect.get("y", 0))
+
+                    # Юзал самую дефолтную формулу из векторной алгебры
+                    distance = ((text_x - rect_x) ** 2 + (text_y - rect_y) ** 2) ** 0.5
+
+                    if distance < min_distance:
+                        min_distance = distance
+                        x = rect_x
+                        nearest_rect = rect
+
+                if nearest_rect is not None:
+                    cfg = {
+                        "font_size": int(row.get("font-size", 1).replace("px", "")),
+                        "width": int(nearest_rect.get("width").replace("px", "")) + (text_x- x),
+                        "average_font_english": 0.65, # Это для DejaVu Sans,
+                        "average_font_russian": 0.78,
+                    }
+                    print("width:", cfg['width'])
+
                 dy = "0" # Изначальный y обычно делают отступом сверху в самом редакторе поэтому зануляем
-                for row_text in rows_texts:
+
+                for row_text in text_split(rows_text, cfg):
                     new_span = etree.Element("tspan", x=row['x'], dy=dy) 
-                    new_span.text = row_text if row_text else "\t" # тернарка добавлена ведь svg не хочет применять пустую строку
+                    new_span.text = row_text
                     
                     element.append(new_span)
                     dy = row['font-size'] # делаем отступ в размер шрифта можно прибавить для красоты какую нибудь константу
@@ -133,6 +177,7 @@ def get_pdf(post_data, folder):
     y_offset = 0
     width, height = landscape(A4)
     images = []
+
     for i in  range(1, 
                     post_data["uniqueTemplates"][post_data["selectedTemplate"]]['countList']+1): # проходимся по всем листам
         
@@ -157,6 +202,7 @@ def get_pdf(post_data, folder):
         # Подводим размеры к альбомному формату
         drawing_scale_x = width / drawing.width 
         drawing_scale_y = height / drawing.height
+        
         drawing.scale(drawing_scale_x, drawing_scale_y)
 
         renderPDF.draw(drawing, pdf, x_offset, y_offset)

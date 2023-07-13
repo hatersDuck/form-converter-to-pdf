@@ -8,7 +8,8 @@
         "photo_uploaded": "Photo Uploaded",
         "enter": "Enter",
         "paste": "Paste",
-        "export": "Export to pdf"
+        "export": "Export to pdf",
+        "preview": "Show preview"
     },
     "ch":{
         "title": "报告生成软件 器",
@@ -19,6 +20,7 @@
         "photo_uploaded": "上传照片",
         "enter": "输入",
         "paste": "粘贴",
-        "export": "导出为 pdf"
+        "export": "导出为 pdf",
+        "preview": "Show preview"
     }
 }
