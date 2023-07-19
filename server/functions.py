@@ -11,7 +11,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 from datetime import datetime
 import tempfile
-from const import PATH, PATH_STATIC, FONT
+from const import PATH, PATH_STATIC, FONT, NS
 from algorithms import text_split, count_letters
 
 # path_font = os.path.join(PATH_STATIC, "fonts", f"{FONT}.ttf")
@@ -72,21 +72,24 @@ def update_svg_template(root, post_data, index, path_img = "", only_static=False
     # Тут происходит вся магия
     elements = []
     images_path = []
-    for children in root:
+    for children in [*root.findall(NS+"text"), *root.findall(NS+"rect")]:
         if check_id(children):
             row = children.attrib # Если id есть парсим все атрибуты
             id_arr = row["id"].split("-") # Парсим id
         else:
+            if children.tag.replace(NS, '') == 'text':
+                children.set('font-family', FONT)
             continue
         if (len(id_arr) <= 1): # Если id заполнен неверно, то скипаем
             continue
 
-        type_ = id_arr[0] 
-        element = root.xpath(f"//*[starts-with(@id, '{row['id']}')]")[0] # берём элемент вообще можно взять другим способом, но мне что первое в голову пришло, то я и оставлю, так ещё и выглядит грозно ))
-        
+        type_ = id_arr[0]
+        # Берём элемент вообще можно взять другим способом, но мне что первое в голову пришло, то я и оставлю, так ещё и выглядит грозно ))
+        element = root.xpath(f"//*[starts-with(@id, '{row['id']}')]")[0]
+
         if check_type(type_) and not(only_static):
-            form = post_data["uniqueTemplates"][post_data["selectedTemplate"]]["forms"][index] # просто сокрашение записи
-            num = int(id_arr[1]) - 1 # type-num-name - Вообще можно придумать систему где num будет не нужен, но что-то в падлу
+            form = post_data["uniqueTemplates"][post_data["selectedTemplate"]]["forms"][index]
+            num = int(id_arr[1]) - 1 # type-num-name
         else:
             if type_ == "static":   # Единственный тип как бы модифицированный, но он просто берёт путь
                 static_path = os.path.join(path_img, 'static', id_arr[1]) # Путь до картинки
@@ -129,9 +132,9 @@ def update_svg_template(root, post_data, index, path_img = "", only_static=False
                 # Поиск ближайшего прямоугольника
                 nearest_rect = None
                 min_distance = float('inf')
-                namespaces = {"svg": "http://www.w3.org/2000/svg"}
+
                 x = 0
-                for rect in root.xpath("//svg:rect", namespaces=namespaces):
+                for rect in root.findall(NS+"rect"):
                     rect_x = float(rect.get("x", 0))
                     rect_y = float(rect.get("y", 0))
 
@@ -146,11 +149,10 @@ def update_svg_template(root, post_data, index, path_img = "", only_static=False
                 if nearest_rect is not None:
                     cfg = {
                         "font_size": int(row.get("font-size", 1).replace("px", "")),
-                        "width": int(nearest_rect.get("width").replace("px", "")) + (text_x- x),
-                        "average_font_english": 0.65, # Это для DejaVu Sans,
-                        "average_font_russian": 0.78,
+                        "width": float(nearest_rect.get("width").replace("px", "")) + (text_x- x),
+                        "average_font_english": 0.62, # Это для DejaVu Sans,
+                        "average_font_russian": 0.75,
                     }
-                    print("width:", cfg['width'])
 
                 dy = "0" # Изначальный y обычно делают отступом сверху в самом редакторе поэтому зануляем
 
@@ -217,3 +219,53 @@ def delete_temp(images):
     for paths in images:
         for path in paths:
             os.remove(os.path.join(PATH_STATIC, path))
+
+def validate(dataSVG) -> bool:
+    """ Правильно ли праставлены все теги или нет """
+    root = etree.fromstring(dataSVG)
+    elements = []
+    images_path = []
+    for children in [*root.findall(NS+"text"), *root.findall(NS+"rect")]:
+        if check_id(children):
+            row = children.attrib 
+            id_arr = row["id"].split("-") 
+        else:
+            if children.tag.replace(NS, '') == 'text':
+                children.set('font-family', FONT)
+            continue
+        if (len(id_arr) <= 1): 
+            continue
+
+        type_ = id_arr[0]
+        element = root.xpath(f"//*[starts-with(@id, '{row['id']}')]")[0]
+
+        if check_type(type_):
+            num = int(id_arr[1]) - 1 
+        else:
+            if type_ == "static":   
+                new_image = etree.Element("image", 
+                                            x=row["x"], y=row["y"], width=row["width"], 
+                                            height=row["height"], preserveAspectRatio="none", href="")
+                element.set("width", "0") 
+                element.set("height", "0")
+
+                elements.append(new_image)
+            else:
+                continue
+        if type_ == "img":
+            new_image = etree.Element("image", 
+                                        x=row["x"], y=row["y"], width=row["width"], 
+                                        height=row["height"], preserveAspectRatio="none", href="")
+            element.set("width", "0")
+            element.set("height", "0")
+            elements.append(new_image)
+
+        elif type_ == "row":
+            element.attrib['font-family'] = FONT 
+
+        elif type_ == "text":
+            element.attrib['font-family'] = FONT
+            text_x = float(element.get("x", 0))
+            text_y = float(element.get("y", 0))
+    
+    return elements

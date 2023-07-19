@@ -24,7 +24,6 @@ def text_split(rows_text, cfg) -> list:
                     if (c == c.upper()):
                         break
                     txt += c
-                print(txt)
                 cnt -= len(txt) + 1
 
         return cnt
@@ -41,7 +40,7 @@ def text_split(rows_text, cfg) -> list:
             for i, cnt in enumerate(counts):
                 start = sum(counts[:i])
                 end = start + cnt
-                if start == len(row_text):
+                if start == len(row_text) or counts[-1] <= 0:
                     break
             
                 if row_text[start] != ' ':

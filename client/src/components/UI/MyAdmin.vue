@@ -55,7 +55,10 @@
         <MyStaticImagesLib :show="showStatics" @hide_img = "showPreviewStatic"/>
     </div>
     <div v-else>
-        <MyPreview :showPreview="showPreview" :dataSVG="dataSVG" :page="page" @hide="showPreviewTemplate" @changePage="changePage"/>
+        <MyPreview :showPreview="showPreview" :dataSVG="dataSVG" :page="page" :editable="true"
+        @hide="showPreviewTemplate" 
+        @changePage="changePage"
+        @replaceSVG="replaceDataSVG"/>
     </div>
 </template>
 
@@ -91,6 +94,9 @@ export default {
         };
     },
     methods: {
+        replaceDataSVG(dataSVG){
+            this.dataSVG = dataSVG
+        },
         showPreviewStatic(hide){
             this.showStatics = hide
         },
@@ -167,15 +173,15 @@ export default {
             if (this.template) {
                 const formData = new FormData();
                 formData.append("name", this.name);
-                for (let i = 0; i < this.files.length; i++) {
-                    formData.append("files[]", this.files[i]);
+                for (let i = 0; i < this.dataSVG.length; i++) {
+                    formData.append("dataSVG[]", this.dataSVG[i]);
                 }
                 axios.post('http://95.163.233.204:5000/addTemplates/', formData)
                     .then(response => {
-                    this.success[0] = response.data;
+                        this.success[0] = response.data;
                 })
                     .catch(error => {
-                    console.error(error);
+                        this.success[0] = error.response.data;
                 });
             } else {
                 const imgData = new FormData();

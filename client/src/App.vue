@@ -14,8 +14,9 @@
                 <option v-if="isAdmin" disabled value=""></option>
                 <option v-if="isAdmin" value="add_template" style="background-color: grey; color:white;">Add Template</option>
                 <option v-if="isAdmin" value="add_image" style="background-color: grey; color:white;">Add Images</option>
+                <option v-if="isAdmin" value="calculator" style="background-color: grey; color:white;">Calculator</option>
             </select>
-            <div v-if="selectedTemplate && selectedTemplate != 'add_template' && selectedTemplate != 'add_image'">
+            <div v-if="selectedTemplate && selectedTemplate != 'add_template' && selectedTemplate != 'add_image' && selectedTemplate != 'calculator'">
                 <div v-if="isAdmin">
                     <button id="submit" type="file" style="background-color: red; font-size: 10px;" @click="deleteTemplate">
                         <div v-if="deletes">YOU SURE?</div><div v-else>DELETE TEMPLATE</div>
@@ -54,6 +55,9 @@
             <div v-if="selectedTemplate == 'add_image'">
                 <MyAdmin/>
             </div>
+            <div v-if="selectedTemplate == 'calculator'">
+                <Calculator/>
+            </div>
         </div>
     </div>
     <MyPreview :showPreview="showPreview" :dataSVG="dataSVG" :page="page" @hide="onPreviewClick" @changePage="changePage"/>
@@ -66,6 +70,7 @@ import MyEditableTitle from "@/components/UI/MyEditableTitle";
 import MyEditableDescription from "@/components/UI/MyEditableDescription";
 import MyPreview from "@/components/UI/MyPreview";
 import MyAdmin from "@/components/UI/MyAdmin";
+import Calculator from "@/components/Calculator"
 
 import axios from 'axios';
 
@@ -78,6 +83,7 @@ export default {
         MyEditableDescription,
         MyPreview,
         MyAdmin,
+        Calculator
     },
     data() {
         return {
@@ -153,12 +159,9 @@ export default {
         
         onPreviewClick(hide){
             this.showPreview = hide;
-            if (hide) {
-                for (let i = 0; i < this.dataSVG.length; i++){
-                    this.updateSVG(i)
-                }
-            }
-                
+            for (let i = 0; i < this.dataSVG.length; i++){
+                this.updateSVG(i)
+            } 
         },
 
         changePage(page) {
@@ -167,7 +170,7 @@ export default {
         },
         
         async onSelectTemplate() {
-            if (this.selectedTemplate !== "add_template" && this.selectedTemplate !== "add_image") {
+            if (this.selectedTemplate !== "add_template" && this.selectedTemplate !== "add_image" && this.selectedTemplate !== "calculator") {
                 const templatesFolder = "templates";
 
                 const request = {

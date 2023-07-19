@@ -2,7 +2,7 @@ import os
 from flask import Flask, jsonify, send_file, request, Response, make_response
 from flask_cors import CORS
 from lxml import etree
-from functions import get_map_template, update_svg_template, get_pdf
+from functions import get_map_template, update_svg_template, get_pdf, validate
 import tempfile
 from const import PATH, PATH_STATIC, IP
 from PIL import Image
@@ -110,7 +110,6 @@ def get_img_map():
 def svg(folder, file):
     path = os.path.join(PATH, folder, file)
     if not os.path.exists(path):
-        print("Not", path)
         return "", 404
     
     if request.method == "POST":
@@ -126,8 +125,7 @@ def svg(folder, file):
             data_svg = etree.tostring(root)
             return Response(data_svg, mimetype='image/svg+xml')
         except Exception as ex:
-            print(ex)
-            return "failed", 500
+            return ex, 500
 
     return send_file(path, mimetype="image/svg+xml")
 
@@ -151,10 +149,18 @@ def pdf(folder):
 @app.route("/addTemplates/", methods=["POST"])
 def add():
     name = request.form.get('name')
-    files = request.files.getlist('files[]')
-    for i, file in enumerate(files):
+    data_svgs = request.form.getlist('dataSVG[]')
+    for i, data_svg in enumerate(data_svgs):
+        try:
+            validate(data_svg)
+        except Exception as ex:
+            print(ex)
+            return ex.__str__(), 400
+    
+    for i, data_svg in enumerate(data_svgs):
         filename = f'{name}-{i+1}.svg'
-        file.save(os.path.join("templates/", filename))
+        with open(os.path.join("templates/", filename), 'w') as file:
+            file.write(data_svg)
     return 'Files uploaded successfully'
 
 @app.route("/delete/<file>", methods=["GET"])
