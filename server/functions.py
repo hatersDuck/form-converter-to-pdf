@@ -92,15 +92,18 @@ def update_svg_template(root, post_data, index, path_img = "", only_static=False
             num = int(id_arr[1]) - 1 # type-num-name
         else:
             if type_ == "static":   # Единственный тип как бы модифицированный, но он просто берёт путь
-                static_path = os.path.join(path_img, 'static', id_arr[1]) # Путь до картинки
-                new_image = etree.Element("image", 
-                                            x=row["x"], y=row["y"], width=row["width"], 
-                                            height=row["height"], preserveAspectRatio="none", href=static_path)
-                # Обнуляем длину-ширину, чтобы небыло рамки от фигуры
-                element.set("width", "0") 
-                element.set("height", "0")
-
-                elements.append(new_image)
+                static_path = os.path.join('static', id_arr[1]) # Путь до картинки
+                if (path_img):
+                    for img in root.findall(NS+"image"):
+                        if img.attrib['href'] ==  static_path:
+                            img.set('href', os.path.join(path_img, static_path))
+                else:
+                    new_image = etree.Element("image", 
+                                                x=row["x"], y=row["y"], width=row["width"], 
+                                                height=row["height"], preserveAspectRatio="none", href=static_path)
+                    element.set("width", "0")
+                    element.set("height", "0")
+                    elements.append(new_image)
             else:
                 continue
 
